@@ -36,7 +36,7 @@ func init() {
 }
 
 func main() {
-	log.Print("birb: g3n test")
+	log.Print("g3n: ribacq/meadow")
 	log.Print(shaders.Shaders())
 
 	// init random
@@ -51,7 +51,8 @@ func main() {
 
 	// perspective camera
 	cam := camera.New(1)
-	cam.SetPosition(0, 0, 3)
+	cam.SetPosition(-4, -4, 4)
+	cam.SetDirection(0, 1, -1)
 	scene.Add(cam)
 
 	// orbit control for camera
@@ -68,26 +69,35 @@ func main() {
 	a.Subscribe(window.OnWindowSize, onResize)
 	onResize("", nil)
 
+	//* ground
+	groundGeom := geometry.NewPlane(42, 42)
+	groundMat := material.NewStandard(math32.NewColor("brown"))
+	groundMat.SetSide(material.SideDouble)
+	groundMesh := graphic.NewMesh(groundGeom, groundMat)
+	scene.Add(groundMesh)
+	//*/
+
 	// create mesh
-	geom := geometry.NewSphere(1.0, 16, 16)
+	geom := geometry.NewSphere(1, 64, 64)
 	mat := material.NewStandard(math32.NewColor("DarkGreen"))
 	//mat.SetShader("plain")
 	//mat.SetOpacity(0.8)
-	//mat.SetSide(material.SideDouble)
+	mat.SetSide(material.SideDouble)
 	mesh := graphic.NewMesh(geom, mat)
+	mesh.SetPosition(0, 0, 1)
 	scene.Add(mesh)
 
 	// create and add lights to the scene
-	scene.Add(light.NewAmbient(&math32.Color{1.0, 1.0, 1.0}, 1.0))
-	pointLight := light.NewPoint(&math32.Color{1, 1, 0.8}, 1.0)
+	scene.Add(light.NewAmbient(&math32.Color{1.0, 1.0, 0.8}, 0.8))
+	pointLight := light.NewPoint(&math32.Color{1.0, 1.0, 0.8}, 5.0)
 	pointLight.SetPosition(1, 0, 2)
 	scene.Add(pointLight)
 
-	// create and add axis
-	scene.Add(helper.NewAxes(0.5))
+	// create and add axes
+	scene.Add(helper.NewAxes(1.5))
 
 	// set grey background
-	a.Gls().ClearColor(0.5, 0.5, 0.5, 1.0)
+	a.Gls().ClearColor(0.3, 0.3, 0.5, 1.0)
 
 	// run the app!
 	a.Run(func(r *renderer.Renderer, deltaTime time.Duration) {
