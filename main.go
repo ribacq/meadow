@@ -6,13 +6,14 @@ import (
 
 	"fmt"
 	"io/ioutil"
-	"log"
+	"strings"
 	"unsafe"
+	"log"
 )
 
 func compileShader(xtype uint32, src string) uint32 {
 	id := gl.CreateShader(xtype)
-	srcPtr, free := gl.Strs(src)
+	srcPtr, free := gl.Strs(src+"\000")
 	defer free()
 	gl.ShaderSource(id, 1, srcPtr, nil)
 	gl.CompileShader(id)
@@ -22,6 +23,7 @@ func compileShader(xtype uint32, src string) uint32 {
 	if result == gl.FALSE {
 		var length int32
 		gl.GetShaderiv(id, gl.INFO_LOG_LENGTH, &length)
+		gl.DeleteShader(id)
 		messageStr := string(make([]rune, length))
 		message := gl.Str(messageStr)
 		gl.GetShaderInfoLog(id, length, &length, message)
@@ -44,14 +46,25 @@ func createVFShaderFromFiles(vertexShaderFilename, fragmentShaderFilename string
 	}
 	fragmentShaderSrc := fmt.Sprintf("%s", fragmentShaderBytes)
 
-	program := gl.CreateProgram()
 	vs := compileShader(gl.VERTEX_SHADER, vertexShaderSrc)
+	log.Println("vs ok")
 	fs := compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc)
+	log.Println("fs ok")
 
+	program := gl.CreateProgram()
 	gl.AttachShader(program, vs)
 	gl.AttachShader(program, fs)
 	gl.LinkProgram(program)
-	gl.ValidateProgram(program)
+	var status int32
+	gl.GetProgramiv(program, gl.LINK_STATUS, &status)
+	if status == gl.FALSE {
+		var logLength int32
+		gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
+		infoLog := strings.Repeat("\x00", int(logLength+1))
+		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(infoLog))
+
+		log.Fatalln("could not link program", infoLog)
+	}
 
 	gl.DeleteShader(vs)
 	gl.DeleteShader(fs)
@@ -67,7 +80,7 @@ func main() {
 	defer glfw.Terminate()
 
 	// open a window
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.Resizable, glfw.False)
 	w, err := glfw.CreateWindow(500, 500, "Hello, world!", nil, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -79,33 +92,46 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Println("OpenGL version", gl.GoStr(gl.GetString(gl.VERSION)))
+
 	// positions
-	positions := [6]float32{
+	positions := []float32{
 		-0.5, -0.5,
-		0.0, 0.5,
 		0.5, -0.5,
+		0.5, 0.5,
+		-0.5, 0.5,
+	}
+
+	indices := []uint32{
+		0, 1, 2,
+		2, 3, 0,
 	}
 
 	// create a vertex buffer
-	var buffer uint32
-	var zero int
-	gl.GenBuffers(1, &buffer)
-	gl.BindBuffer(gl.ARRAY_BUFFER, buffer)
-	gl.BufferData(gl.ARRAY_BUFFER, len(positions)*int(unsafe.Sizeof(float32(0.0))), unsafe.Pointer(&positions), gl.STATIC_DRAW)
+	var vbuffer uint32
+	gl.GenBuffers(1, &vbuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, len(positions)*int(unsafe.Sizeof(float32(0.0))), gl.Ptr(positions), gl.STATIC_DRAW)
+
+	// create an index buffer
+	var ibo uint32
+	gl.GenBuffers(1, &ibo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*int(unsafe.Sizeof(uint32(0))), gl.Ptr(indices), gl.STATIC_DRAW)
 
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2*int32(unsafe.Sizeof(float32(0.0))), unsafe.Pointer(&zero))
+	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2*4, gl.PtrOffset(0))
 
 	// load shaders
 	shaderProgram := createVFShaderFromFiles("shaders/vert00.glsl", "shaders/frag00.glsl")
-	gl.UseProgram(shaderProgram)
 	defer gl.DeleteProgram(shaderProgram)
+	gl.UseProgram(shaderProgram)
 
 	// render loop
 	for !w.ShouldClose() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
-		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 
 		w.SwapBuffers()
 		glfw.PollEvents()
