@@ -86,6 +86,7 @@ func main() {
 		log.Fatal(err)
 	}
 	w.MakeContextCurrent()
+	glfw.SwapInterval(1)
 
 	// init gl
 	if err := gl.Init(); err != nil {
@@ -127,9 +128,25 @@ func main() {
 	defer gl.DeleteProgram(shaderProgram)
 	gl.UseProgram(shaderProgram)
 
+	// uniform
+	uColorLocation := gl.GetUniformLocation(shaderProgram, gl.Str("u_Color\000"))
+	if uColorLocation == -1 {
+		log.Println("could not find uniform")
+	}
+
 	// render loop
+	blue := float32(0.8)
+	increment := float32(0.001)
 	for !w.ShouldClose() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
+
+		if blue > 1.0 {
+			increment = -0.025
+		} else if blue < 0.0 {
+			increment = 0.025
+		}
+		blue += increment
+		gl.Uniform4f(uColorLocation, 0.3, 0.2, blue, 1.0)
 
 		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 
