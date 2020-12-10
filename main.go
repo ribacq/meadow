@@ -6,14 +6,14 @@ import (
 
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 	"unsafe"
-	"log"
 )
 
 func compileShader(xtype uint32, src string) uint32 {
 	id := gl.CreateShader(xtype)
-	srcPtr, free := gl.Strs(src+"\000")
+	srcPtr, free := gl.Strs(src + "\000")
 	defer free()
 	gl.ShaderSource(id, 1, srcPtr, nil)
 	gl.CompileShader(id)
@@ -123,7 +123,7 @@ func main() {
 	gl.VertexAttribPointer(0, 2, gl.FLOAT, false, 2*4, gl.PtrOffset(0))
 
 	// load shaders
-	shaderProgram := createVFShaderFromFiles("shaders/vert00.glsl", "shaders/frag00.glsl")
+	shaderProgram := createVFShaderFromFiles("res/shaders/vert00.glsl", "res/shaders/frag00.glsl")
 	defer gl.DeleteProgram(shaderProgram)
 	gl.UseProgram(shaderProgram)
 
