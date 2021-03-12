@@ -4,12 +4,15 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 
+	"embed"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"strings"
 	"unsafe"
 )
+
+//go:embed res
+var resFS embed.FS
 
 func compileShader(xtype uint32, src string) uint32 {
 	id := gl.CreateShader(xtype)
@@ -34,13 +37,13 @@ func compileShader(xtype uint32, src string) uint32 {
 }
 
 func createVFShaderFromFiles(vertexShaderFilename, fragmentShaderFilename string) uint32 {
-	vertexShaderBytes, err := ioutil.ReadFile(vertexShaderFilename)
+	vertexShaderBytes, err := resFS.ReadFile(vertexShaderFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
 	vertexShaderSrc := fmt.Sprintf("%s", vertexShaderBytes)
 
-	fragmentShaderBytes, err := ioutil.ReadFile(fragmentShaderFilename)
+	fragmentShaderBytes, err := resFS.ReadFile(fragmentShaderFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
